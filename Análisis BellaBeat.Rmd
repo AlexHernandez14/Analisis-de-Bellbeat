@@ -1,0 +1,350 @@
+---
+title: "Analisis Bellbeat (Data analyst)"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-01-25"
+---
+
+¿Cómo puede mejorar la empresa Bellabeat su estrategia? Este analisis ha sido confeccionado a modo de trabajo final donde nos situamos en un escenario en el cual somos analistas de datos junior para esta empresa de tecnología del bienestar, centrada en productos del dia a dia para mujeres. Estamos investigando tendencias de uso y datos que nos aportan tanto los usuarios con el uso de los dispositivos, así como numerosos datos recogidos mediante encuestas y otros medios.
+
+Vamos a ir una por una repasando las diferentes etapas del análisis.
+
+## Fase 1 Preguntar:
+
+Durante esta fase debemos establecer las preguntas a las cuales queremos dar repsuesta con nuestro analisis y las conclusiones que saquemos con este, en primer lugar vamos a destacar la búsqueda de ventajas competitivas frente a competidores mediante este análisis.
+
+Por otro lado, vamos a identificar a nuestros grupos de interés (Stakeholders) - La directora de producto - El director y miembro del equipo de Business Intelligence - El equipo de analisis de negocio
+
+## Fase 2 Preparar:
+
+En esta fase debemos preparar todos nuestros datos, e indicar la fuente. Estos datos estan disponibles en kaggle (<https://www.kaggle.com/arashnic/fitbit>) y son de acceso libre. Los datos recogidos se presentan en 18 .csv vitales.
+
+Los datos tienen varias limitaciones como que la muestra de datos es de menos de 30 usuarios por lo cual puede estar sesgada, otra limitación tiene que ver con el origen ya que el producto se comercializa mundialmente y no tenemos ninguna referencia de pais de procedencia. Además los datos fueron tomados durante 33 dias, lo cual es un periodo de tiempo muy corto.
+
+## Fase 3 Proceso:
+
+Lo primero que debemos hacer es conocer de que datos disponemos, y comenzar a ordenarlos y filtrarlos. En primer lugar tenemos 3 archivos .csv diferentes y los vamos a cargar dentro de Rstudio.
+
+Los 3 archivos en los que vamos a trabajar son:
+
+-   **dailyActivity_merged.csv** - Contiene los datos de atributos como Pasos totales, Distancia total, Intensidad y Calorias durante 30 dias de 33 usuarios desde el 12/04/2016 al 12/05/2016.
+-   **sleepDay_merged.csv** - Contiene los minutos totales que estan en cama y los de sueño durante 30 dias de 24 usuarios diferentes en las mismas fechas.
+-   **weightLogInfo_merged.csv** - Contiene el peso de 8 usuarios durante 27 días desde las mismas fechas otra vez.
+
+Dicho esto, vamos a cargar los siguientes paquetes para realizar el analisis:
+
+-   tidyverse: Para favorecer la manipulación de los datos, su exploración y la visualización (General)
+
+-   tidyr: Para la limpieza de los datos
+
+-   readr: Para leer los archivos .csv
+
+-   lubridate: Para la fecha y hora
+
+-   janitor: Para facilitar el "summarize" de los datos
+
+-   dplyr
+
+-   ggplot2: Para favorecer la visualización
+
+```{r setup, include=FALSE}
+install.packages("tidyverse")
+install.packages("tidyr")
+install.packages("readr")
+install.packages("lubridate")
+install.packages("janitor")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("ggrepel")
+```
+
+Tras esto, cargamos los paquetes dentro del sistema a través de "Library()"
+
+```{r library}
+library(tidyverse)
+library(readr)
+library(tidyr)
+library(lubridate)
+library(janitor)
+library(dplyr)
+library(plotly)
+library(ggplot2)
+library(ggrepel)
+```
+
+Una vez que todos los paquetes son cargados, vamos a cargar los datos en el formato .csv y a crear los diferentes DataFrame con los que vamos a trabajar:
+
+```{r cargar los .csv}
+dailyactivity_data <- read_csv("dailyActivity_merged.csv")
+sleep_data <- read_csv("sleepDay_merged.csv")
+weight_data <- read_csv("weightLogInfo_merged.csv")
+```
+
+Ahora vamos a observar los dataframe que hemos creado con el comando head() y str() para poder visualizar las primeras columnas de las tablas, ver a que nos estamos enfrentando, y la estructura de la propia tabla respectivamente.
+
+En este paso, también podríamos usar el colnames() para poder examinar los nombres de todas las columnas de un único vistazo.
+
+```{r examinar las tablas1}
+head(dailyactivity_data)
+str(dailyactivity_data)
+```
+
+```{r examinar las tablas2}
+head(sleep_data)
+str(sleep_data)
+```
+
+```{r examinar las tablas3}
+head(weight_data)
+str(weight_data)
+```
+
+## Fase 4. Limpieza de datos:
+
+En esta fase vamos a comenzar la limpieza de los datos de las tablas, las 3 condiciones que debemos seguir en este proceso es:
+
+-   Averiguar cuantos usuarios distintos tenemos en cada conjunto de datos, es decir, cuantas entradas en la tabla son únicas.
+
+-   Comprobar si existen valores nulos (null) dentro de las tablas.
+
+-   Comprobar los resultados duplicados.
+
+```{r limpieza tabla1}
+nrow(dailyactivity_data) #Total de celdas s/datos
+n_distinct(dailyactivity_data$Id) #Comprueba los usuarios distintos
+any(is.na(dailyactivity_data)) #Comprueba si hay datos nulos (null)
+colSums(dailyactivity_data==0) #Comprueba si en cada columna hay algun valor de 0 
+sum(duplicated(dailyactivity_data)) #Comprueba si hay algun valor recogido duplicado 
+```
+
+```{r limpieza tabla2}
+nrow(sleep_data)
+n_distinct(sleep_data)
+any(is.na(sleep_data$Id))
+colSums(sleep_data==0)
+sum(duplicated(sleep_data))
+```
+
+```{r limpieza tabla3}
+nrow(weight_data) 
+n_distinct(weight_data$Id) 
+any(is.na(weight_data)) 
+colSums(weight_data==0) 
+sum(duplicated(weight_data))
+```
+
+De estos resultados podemos comprobar que:
+
+1.  La primera tabla, que muestra la actividad diaria (Dailyactivity_data) tiene un total de **940 resultados**, para **33 usuarios diferente**s y **no tiene datos duplicados**, ademas podemos observar que tiene **columnas con 0 valores** como por ejemplo Pasos totales o Distancia total.
+
+2.  La tabla 2, que muestra valores del sueño (sleep_data) tiene un total de **413 entradas**, para **24 usuarios** y **3 duplicados.**
+
+3.  La tabla 3, que muestra el peso tiene un total de **67 resultados** y al igual que la primera **no tiene duplicados**.
+
+Asi que tras estas conclusiones, podemos pasar a **eliminar los datos duplicados** de la tabla dailyactivity_data y filtrar los que dan 0 para pasos totales.
+
+```{r extraer datos únicos de actividad}
+dailyactivity_data <- dailyactivity_data %>% filter(TotalSteps!=0)
+dailyactivity_data <- dailyactivity_data %>% filter(TotalDistance!=0)
+```
+
+```{r extraer datos únicos}
+sleep_data <- unique(sleep_data) #Para guardar los resultados únicos al dataframe de sueño
+sum(duplicated(sleep_data)) #Para mostrar los duplicados
+```
+
+A continuación, tras los filtrados de la limpieza previa, podemos ver que tanto en la tabla de sueño como en la de peso (Sleep_data y Weight_data) las columnas en las que se indica una fecha tienen dia y hora concreto (Ejemplo = 16/04/2016 11:00AM), mientras que en la de actividad (dailyactivity_data) tenemos la fecha con el formato unico de esta, sin la hora del día (Ejemplo = 16/04/2016). Ahora separamos la columna de las 2 primeras en 2 columnas diferentes con la fecha y hora para tener la fecha con el mismo formato en las 3 tablas, ya que estan en formato "characters", y pasamos a añadir la columna "Weekday" en las tablas.
+
+```{r transformar y unificar la fecha}
+sleep_data <-sleep_data %>% separate(SleepDay, into=c('Date','Time'),sep=' ') #Separa en 2 columnas 
+weight_data <- weight_data %>% separate(Date, into =c('Date','Time'),sep=' ') 
+dailyactivity_data <- dailyactivity_data %>% rename(Date = ActivityDate) %>%
+  mutate(Weekday = weekdays(as.Date(Date, format = "%m/%d/%y"))) #Cambiar el formato a fecha y renombrarlo como "fecha"
+dailyactivity_data$Weekday <- factor(dailyactivity_data$Weekday, levels=c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"))
+sleep_data <- sleep_data %>%  mutate(Weekday=weekdays(as.Date(Date, format = "%m/%d/%y"))) #Cambiar el formato fecha en tabla de sueño
+weight_data <- weight_data  %>% mutate(Weekday = weekdays(as.Date(Date, format = "%m/%d/%y"))) #Cambiar el formato fecha en la tabla peso
+```
+
+## Fase 5. Análisis:
+
+Para ejecutar el análisis vamos a calcular las variables estadísticas (Media, Máximo, Mínimo) de cada una de las tablas.
+
+-   **Tabla de actividad diaria:** Medimos la relación entre los pasos, distancia, calorias y minutos activo.
+
+```{r calculo variables tabla actividad diaria}
+dailyactivity_data %>% group_by(Weekday)%>%summarize(min_step=min(TotalSteps),max_step=max(TotalSteps),avg_step=mean(TotalSteps),min_distance=min(TotalDistance),max_distance=max(TotalDistance),avg_distance=mean(TotalDistance),min_calories=min(Calories),max_calories=max(Calories),avg_calories=mean(Calories),avg_VeryActiveMinutes=mean(VeryActiveMinutes),avg_FairlyActiveMinutes=mean(FairlyActiveMinutes),avg_LightlyActiveMinutes=mean(LightlyActiveMinutes),avg_Sedentary=mean(SedentaryMinutes))
+
+dailyactivity_data %>% summarize(avg_calories=mean(Calories), avg_step_count=mean(TotalSteps), avg_distance = mean(TotalDistance),avg_VeryActiveMinutes=mean(VeryActiveMinutes),avg_FairlyActiveMinutes=mean(FairlyActiveMinutes),avg_LightlyActiveMinutes=mean(LightlyActiveMinutes),avg_Sedentary=mean(SedentaryMinutes))
+```
+
+**Conclusiones:**
+
+1.  Vemos claramente que existe una relación entre los pasos y las calorías quemadas por los usuarios, por lo que podemos decir que a **más pasos dados, mayor** será la cantidad de **calorías quemadas** por el usuario.
+2.  El máximo de calorías quemadas se da el **Domingo**.
+3.  Los usuarios pasan la **mayor parte del tiempo siendo sedentarios**, como podemos constatar con la media de sedentarismo al observar que la mayoría de días esta alta a comparación de los tiempos medidos como activos.
+4.  Los usuarios queman una media de **2362** kcal durante este periodo de 30 días, con una distancia media recogida de **5.9** y una media de pasos registrados de **8329**.
+
+-   **Tabla de sueño:** Con esta tabla analizamos el total de minutos de sueño de los usuarios frente al tiempo total en cama.
+
+```{r calculo variables tabla sueño}
+sleep_data %>% group_by(Weekday)%>%summarize(min_totalminutesasleep=min(TotalMinutesAsleep),max_totalminutesasleep=max(TotalMinutesAsleep),avg_totalminutesasleep=mean(TotalMinutesAsleep),min_totaltimeinbed=min(TotalTimeInBed),max_totaltimeinbed=max(TotalTimeInBed),avg_totaltimeinbed=mean(TotalTimeInBed)) 
+sleep_data %>% summarize(avg_sleeprecords=mean(TotalSleepRecords),avg_totalminutesasleep=mean(TotalMinutesAsleep),avg_totaltimeinbed=mean(TotalTimeInBed))
+
+```
+
+**Conclusiones:**
+
+1.  Identificamos que en el contexto de la muestra, los usuarios pasan una media de **458 minutos en la cama** mientras que por el otro lado pasan **419 minutos de media de sueño**.
+2.  Si hacemos 419 minutos / 60 minutos por hora, obtenemos que de media cada usuario de la muestra tiene **aproximadamente 7 horas de sueño diario**, lo cual según organismos de la salud mundial se acerca a lo deseable para un descanso óptimo.
+
+-   **Tabla de peso**
+
+```{r calculo variables tabla peso}
+weight_data %>% group_by(Id)%>%summarize(min_weightkg=min(WeightKg),max_weightkg=max(WeightKg),avg_weightkg=mean(WeightKg),min_weightpounds=min(WeightPounds),max_weightpounds=max(WeightPounds),avg_weightpounds=mean(WeightPounds),min_BMI=min(BMI),max_BMI=max(BMI),avg_BMI=mean(BMI))
+
+```
+
+**Conclusiones:**
+
+1.  Según el indice de masa corporal, la media es 25 y a partir de ahi se considera sobrepeso. Si nos centramos en el análisis vemos como la mayor parte de los usuarios de FitBit tienen unos datos de peso fuera del rango de ser sano según este índice.
+
+Para un análisis más exhaustivo vamos a combinar las tres tablas uniendolas mediante el nexo de la columna "Id" presente en todas ellas.
+
+```{r unión tablas}
+actividad_sueñoID <-merge(dailyactivity_data, sleep_data, by=c("Id","Date")) #Unimos las 2 primeras tablas con el Id común y la fecha
+final_sueño_peso_actividad_ID <- merge(actividad_sueñoID,weight_data,by=c("Id","Date")) #Al resultado anterior le añadimos las columnas de Id común y fecha de la tabla de peso 
+```
+
+```{r examinar la relación entre tablas}
+final_sueño_peso_actividad_ID %>% group_by(Id)%>%summarize(avg_weightkg=mean(WeightKg),avg_weightpounds=mean(WeightPounds),avg_BMI=mean(BMI),avg_totalminutesasleep=mean(TotalMinutesAsleep),avg_totaltimeinbed=mean(TotalTimeInBed),avg_calories=mean(Calories), avg_step_count=mean(TotalSteps), avg_distance = mean(TotalDistance),avg_VeryActiveMinutes=mean(VeryActiveMinutes),avg_FairlyActiveMinutes=mean(FairlyActiveMinutes),avg_LightlyActiveMinutes=mean(LightlyActiveMinutes),avg_Sedentary=mean(SedentaryMinutes)) 
+```
+
+**Conclusiones**
+
+1.  Una vez hemos unido las tablas vemos como solamente hay 5 usuarios que han preferido utilizar el entorno tecnológico de Bellabeat para calcular su peso, sueño, pasos y actividad diaria.
+
+2.  El usuario con un peso mayor registrado es de 133 Kg, con un indice de masa corporal de 47, se pasa la mayor parte del tiempo siendo sedentario y fue el dispositivo que menos actividad y pasos totales ha registrado el dispositivo.
+
+3.  Un indice de masa corporal normal pero menos calorías quemadas ha incrementado un poco el nivel de sendentarismo y ha registrado un menor nivel de actividad.
+
+4.  Los usuarios activos tienen buenas horas de sueño si los comparamos con los usuarios con menor actividad física, los cuales tienen menores horas de sueño o un nivel menor de calidad.
+
+## Fase 6. Visualización:
+
+En esta penultima fase vamos a crear algunos paneles que apoyen las conclusiones que hemos obtenido con en análisis para mejorar la comprensión de las conclusiones y que se sea más ágil la toma de decisiones.
+
+**1. Pasos totales vs Calorias quemadas**
+
+```{r gráfico_1, echo= FALSE}
+ggplot(data=dailyactivity_data)+
+  geom_point(mapping=aes(x=TotalSteps,y=Calories),color="lightgreen")+
+  geom_smooth(method='loess',formula='y~x',mapping=aes(x=TotalSteps,y=Calories))+
+  labs(title="Pasos Totales vs Calorías", x= "Pasos Totales", y = "Calorias Quemadas")
+```
+
+Este gráfico nos muestra la correlación positiva entre los pasos tomados y las calorías quemadas, por lo cual podemos extraer la conclusión que a un número mayor de pasos haga un usuario, mayor será la cantidad de calorías quemadas.
+
+**2. Calorías quemadas basadas en la Actividad diaria**
+
+```{r gráfico_2, echo= FALSE}
+ggplot(data=dailyactivity_data)+
+  geom_point(mapping=aes(x=Calories,y=FairlyActiveMinutes),color="orange")+
+  geom_smooth(method='loess',formula='y~x',mapping=aes(x=Calories,y=FairlyActiveMinutes,color=FairlyActiveMinutes),color="orange")+
+  geom_point(mapping=aes(x=Calories,y=VeryActiveMinutes), color="royalblue")+
+  geom_smooth(method='loess',formula='y~x',mapping=aes(x=Calories,y=VeryActiveMinutes,color=VeryActiveMinutes),color="royalblue")+
+  geom_point(mapping=aes(x=Calories,y=LightlyActiveMinutes), color="tomato")+
+  geom_smooth(method='loess',formula='y~x',mapping=aes(x=Calories,y=LightlyActiveMinutes,color=LightlyActiveMinutes),color="tomato")+
+  geom_point(mapping=aes(x=Calories,y=SedentaryMinutes), color="forestgreen")+
+  geom_smooth(method='loess',formula='y~x',mapping=aes(x=Calories,y=SedentaryMinutes,color=SedentaryMinutes),color="forestgreen")+
+  annotate("text",x=4800,y=160,label="Muy activo",color="black",size=4)+
+  annotate("text",x=4800,y=0,label="Algo Activo",color="black",size=4)+
+  annotate("text",x=4800,y=500,label="Sedentario",color="black",size=4)+
+  annotate("text",x=4800,y=250,label="Ligeramente Activo",color="black",size=4)+
+  labs(title="Calorias quemadas en base a la actividad",x="Calorias quemadas",y="Minutos activo")
+```
+
+Este gráfico compara los 4 niveles de actividad de los usuarios (Muy Activo, Algo Activo, Ligeramente Activo y Sedentario) en relación a las calorías quemadas. El mayor número de calorías quemadas está entre 2000\~3000 Kcal. Los usuarios con actividad sedentaria se sitúan entre 500\~1000 mínimo, un tiempo moderado en ligeramente activo y menos tiempo siendo algo activos o muy activos.
+
+Además podemos observar que a medida que mas calorías quemadas van incrementando, el sedentarismo van decreciendo junto los datos de algo y ligeramente activo, lo cual indica que los usuarios que queman más calorías son más activos.
+
+**3. Calorías quemadas semanalmente**
+
+```{r gráfico_3, echo= FALSE}
+ggplot(data=dailyactivity_data,aes(x=Weekday,y=Calories, fill=Weekday))+
+  geom_bar(stat="identity")+
+  labs(title="Calories burnt weekly",x="weekday",y="Calories")
+```
+
+Este gráfico es muy básico, nos muestra como se distribuyen la quema de calorías a lo largo de la semana, pudiendo extraer conclusiones como que el domingo es el día con el número máximo de cantidad quemadas, seguido del lunes y después va decayendo hasta el viernes, donde se sitúa el mínimo.
+
+**4. Comparación de niveles de actividad diaria**
+
+```{r gráfico_4, echo= FALSE}
+totalminutes <-sum(dailyactivity_data$VeryActiveMinutes,dailyactivity_data$FairlyActiveMinutes,dailyactivity_data$LightlyActiveMinutes,dailyactivity_data$SedentaryMinutes)
+veryactive<-(sum(dailyactivity_data$VeryActiveMinutes)/totalminutes)*100
+fairlyactive<-(sum(dailyactivity_data$FairlyActiveMinutes)/totalminutes)*100
+lightlyactive<-(sum(dailyactivity_data$LightlyActiveMinutes)/totalminutes)*100
+sedentary<-(sum(dailyactivity_data$SedentaryMinutes)/totalminutes)*100
+
+count.data <- data.frame(
+  Activity_minutes = c("Muy Activo","Algo Activo","Ligeramente Activo","Sedentario"),
+  proportion = c(veryactive,fairlyactive,lightlyactive,sedentary)
+)
+percent2 <- count.data %>% 
+  mutate(csum = rev(cumsum(rev(proportion))), 
+         pos = proportion/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), proportion/2, pos))
+
+ggplot(count.data, aes(x = "" , y =proportion, fill = fct_inorder(Activity_minutes))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Pastel1") +
+  geom_label_repel(data = percent2,
+                   aes(y = pos, label = paste0(round(proportion,2), "%")),
+                   size = 3.5, nudge_x = 1, show.legend = FALSE) +
+  guides(fill = guide_legend(title = "Activity")) +
+  theme_void()+
+  labs(title="Comparación de Actividad")
+```
+
+Este gráfico es muy visual, en el podemos ver como la mayor parte del tiempo la actividad de los usuarios es sendentaria y los porcentajes de actividad se mantienen bajos. Los usuarios que utilizan la app están utilizando para llevar un seguimiento de su movimiento inactivo y otras actividades, pero no están activos el tiempo de entrenamiento ya que el momento de actividad total porcentual se situa por debajo del 50%.
+
+**5. Comparación del Tiempo en cama vs Tiempo de sueño**
+
+```{r gráfico_5, echo= FALSE}
+ggplot(data=sleep_data)+
+  geom_point(mapping=aes(x=TotalMinutesAsleep,y=TotalTimeInBed), color="tomato")+
+  geom_smooth(mapping=aes(x=TotalMinutesAsleep,y=TotalTimeInBed))+
+  labs(title="Total de Minutos sueño vs Total de Minutos en cama", x="Total Minutos Sueño",y="Total Tiempo en Cama")
+```
+
+En esta visualización vemos que existe una correlación positiva entre el tiempo en cama y el tiempo de sueño, lo que significa que existen usuarios que pasan tiempo en cama haciendo otras actividades que no tienen que ver con el sueño, lo cual no beneficia a su salud.
+
+**6. Comparación entre el Peso vs Actividad Diaria**
+
+```{r gráfico_6, echo= FALSE}
+ggplot(data=final_sueño_peso_actividad_ID)+
+geom_point(mapping=aes(x=WeightKg,y=FairlyActiveMinutes, color="FairlyActiveMinutes"))+
+geom_point(mapping=aes(x=WeightKg,y=VeryActiveMinutes,color="VeryActiveMinutes"))+
+geom_point(mapping=aes(x=WeightKg,y=LightlyActiveMinutes,color="LightlyActiveMinutes"))+
+geom_point(mapping=aes(x=WeightKg,y=SedentaryMinutes,color="SedentaryMinutes"))+
+
+labs(title="Actividad Diaria vs Peso",x="Peso en Kg",y="Minutos Activo")
+```
+
+En este panel vemos que para los usuarios con pesos de entre 60\~100 Kg su actividad se relaciona con sedentarismo. A medida que los usuarios registran un menor nivel de actividad puede ocasionar una razón para su sobrepeso
+
+## Conclusiones Finales
+
+En este paso como cierre a este análisis vamos a comentar algunas de las conclusiones a las que hemos llegado tras este análisis y se van a realizar algunas recomendaciones basadas en las observaciones que hemos tenido.
+
+En primer lugar, y basándonos en el análisis vemos que a un número mayor de pasos registrados aumentan las calorías quemadas. Aquí, es donde la empresa puede implantar un nuevo sistema de puntos, que registre los pasos diarios permitiendo a los usuarios crearse sus registros con metas diarias, mensuales y trimestrales para que les motive el mantenerse en movimiento y al final del día recordándoles los números conseguidos y si han llegado al objetivo o no.
+
+En segundo lugar vemos que el domingo es el día que registra una mayor actividad, mientras que el viernes es el punto más bajo. Para conseguir mantener la atención de lo usuarios, la empresa podría crear un sistema de desafíos de actividad que permitiera motivarse y compartir sus resultados en redes sociales, creando así un hábito de actividad que quizá en un escenario optimista permitiera al gráfico ser constante todos los días.
+
+Además, la mayoría de los usuarios tienen un nivel medio de actividad diaria muy bajo o sedentario en la mayoría, para fomentar la actividad se podrían hacer sesiones de motivación, cápsulas de información sobre llevar una vida activa o consejos de alimentación para complementar la actividad y mantenerse sanos.
+
+En cuanto a las horas de sueño, es una variable que se sitúa en el límite de lo recomendado por lo que la empresa podría elaborar un sistema que permitiera a los usuarios ponerse una alarma para el día siguiente basada en sus horas de sueño, y que mediante el seguimiento del sueño se cree un diagrama que permita a los usuarios seguir su calidad de sueño, minutos, para examinarse mejor a ellos mismos.
+
+A modo de cierre y como conclusion final creo que según los datos y las observaciones obtenidas la empresa puede beneficiar mucho a los usuarios, eliminando su predilección por el público femenino y ampliando su gama de productos para ambos sexos, aportandoles una herramienta de apoyo en su dia a dia que les permita crear nuevos hábitos, mantenerse saludables, aumentar su calidad de sueño o aumentar su actividad diaria. La empresa puede convertirse en un aliado indispensable para muchos usuarios, pero no únicamente con su dispositivo sino que la creación de un ecosistema puede traer consigo una mayor parte de mejoras tanto para los usuarios fieles que se quieren mantener dentro del ecosistema como para los habituales que unicamente buscan un seguimiento simple de algunas variables como los pasos o la actividad diaria.
